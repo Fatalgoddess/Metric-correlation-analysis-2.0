@@ -77,5 +77,11 @@
 			<artifactId>log4j2-elasticsearch-jest</artifactId>
 			<version>1.1.1</version>
 		</dependency>
+		<dependency>
+			<groupId>org.asynchttpclient</groupId>
+			<artifactId>async-http-client</artifactId>
+			<version>LATEST_VERSION</version>
+		</dependency>
+
 	</dependencies>
 </project>
