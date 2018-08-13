@@ -78,7 +78,7 @@ public class projectSelector {
 
 	@Test
 	public void projectSelector() {
-		addDocumentsToElastic();
+		searchForJavaRepositoryNames();
 	}
 
 	private HashSet<RepositoryResult> searchForJavaRepositoryNames() {
@@ -89,10 +89,9 @@ public class projectSelector {
 			CloseableHttpClient httpClient = HttpClientBuilder.create().build();
 
 			// (requests x 100)
-			//TODO: Set i to 5
-			for (int i = 1; i <= 1; i++) {
-				url = "https://api.github.com/search/repositories?q=?page=" + i
-						+ "language:java&sort=stars&order=desc" + "&access_token=" + OAuthToken + "&per_page=9";
+			 for (int i = 1; i <= 50; i++) {
+				url = "https://api.github.com/search/repositories?q=?page=" + i + "&language:java&sort=stars&order=desc"
+						+ "&access_token=" + OAuthToken + "&per_page=100";
 
 				HttpGet request = new HttpGet(url);
 				request.addHeader("content-type", "application/json");
@@ -105,16 +104,12 @@ public class projectSelector {
 				JsonArray jarray = jobject.getAsJsonArray("items");
 
 				for (int j = 0; j < jarray.size(); j++) {
-					
-					if ((j>0) && (j % 9 == 0)) {
-						TimeUnit.MINUTES.sleep(1);
-					}
-					
+
 					JsonObject jo = (JsonObject) jarray.get(j);
 					String fullName = jo.get("full_name").toString().replace("\"", "");
 					int stars = Integer.parseInt(jo.get("stargazers_count").toString());
 
-					if ((stars >= 5) && isGradleRepository(fullName)) {
+					if ((stars >= 50) && isGradleRepository(fullName)) {
 						System.out.println("MATCH : " + fullName);
 
 						String product = jo.get("name").toString().replace("\"", "");
@@ -124,19 +119,21 @@ public class projectSelector {
 
 						respositoryResults.add(new RepositoryResult(vendor, product, stars));
 					}
+
 					System.out.println(j);
+
+					if ((j == 29) || ((j > 29) && (j % 30 == 0))) {
+						TimeUnit.MINUTES.sleep(1);
+					}
+
 				}
+				addDocumentsToElastic(respositoryResults);
+				respositoryResults.clear();
 			}
 			httpClient.close();
 		} catch (Exception e) {
 			System.out.println(e.getStackTrace());
 		}
-
-		// for (RepositoryResult repositoryResult : respositoryResults) {
-		// System.out.println("FOUND PRODUCT " +
-		// repositoryResult.getProduct().toString() + " VENDOR IS "
-		// + repositoryResult.getVendor().toString());
-		// }
 
 		return respositoryResults;
 	}
@@ -149,8 +146,8 @@ public class projectSelector {
 		try {
 			CloseableHttpClient httpClient = HttpClientBuilder.create().build();
 
-			gradleSearchUrl = "https://api.github.com/search/code?q=repo:" + repositoryName
-					+ "+filename:" + gradleKeyword;
+			gradleSearchUrl = "https://api.github.com/search/code?q=repo:" + repositoryName + "+filename:"
+					+ gradleKeyword + "&access_token=" + OAuthToken;
 			HttpGet requestGradleRepository = new HttpGet(gradleSearchUrl);
 			requestGradleRepository.addHeader("content-type", "application/json");
 
@@ -175,24 +172,23 @@ public class projectSelector {
 		return result;
 	}
 
-	private void addDocumentsToElastic() {
-		HashSet<RepositoryResult> repositoriesSet = searchForJavaRepositoryNames();
-		ArrayList<HashMap<String,Object>> repositories = new ArrayList<HashMap<String,Object>>();
-		
+	private void addDocumentsToElastic(HashSet<RepositoryResult> repositoriesSet) {
+		ArrayList<HashMap<String, Object>> repositories = new ArrayList<HashMap<String, Object>>();
+
 		for (RepositoryResult repositoryResult : repositoriesSet) {
-			HashMap<String,Object>repository = new HashMap<String, Object>();
+			HashMap<String, Object> repository = new HashMap<String, Object>();
 			repository.put("Vendor", repositoryResult.getVendor());
 			repository.put("Product", repositoryResult.getProduct());
 			repository.put("Stars", repositoryResult.getStars());
 			repositories.add(repository);
 		}
-		
+
 		RestHighLevelClient client = new RestHighLevelClient(
 				RestClient.builder(new HttpHost("localhost", 9200, "http")));
 
 		IndexRequest indexRequest = null;
 
-		for (Iterator<HashMap<String,Object>> iterator = (repositories).iterator(); iterator.hasNext();) {
+		for (Iterator<HashMap<String, Object>> iterator = (repositories).iterator(); iterator.hasNext();) {
 			indexRequest = new IndexRequest(repositoryDatabaseName, "doc").source(iterator.next());
 
 			try {
