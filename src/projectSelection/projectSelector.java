@@ -89,9 +89,9 @@ public class projectSelector {
 			CloseableHttpClient httpClient = HttpClientBuilder.create().build();
 
 			// (requests x 100)
-			 for (int i = 1; i <= 50; i++) {
-				url = "https://api.github.com/search/repositories?q=?page=" + i + "&language:java&sort=stars&order=desc"
-						+ "&access_token=" + OAuthToken + "&per_page=100";
+			 for (int i = 1; i <= 100; i++) {
+				url = "https://api.github.com/search/repositories?q=language:java&sort=stars&order=desc"
+						+ "&access_token=" + OAuthToken + "&page=" + i + "&per_page=89";
 
 				HttpGet request = new HttpGet(url);
 				request.addHeader("content-type", "application/json");
@@ -109,7 +109,7 @@ public class projectSelector {
 					String fullName = jo.get("full_name").toString().replace("\"", "");
 					int stars = Integer.parseInt(jo.get("stargazers_count").toString());
 
-					if ((stars >= 50) && isGradleRepository(fullName)) {
+					if ((stars >= 100) && isGradleRepository(fullName)) {
 						System.out.println("MATCH : " + fullName);
 
 						String product = jo.get("name").toString().replace("\"", "");
@@ -122,7 +122,7 @@ public class projectSelector {
 
 					System.out.println(j);
 
-					if ((j == 29) || ((j > 29) && (j % 30 == 0))) {
+					if ((j == 28) || (j == 58) || (j == 88)) {
 						TimeUnit.MINUTES.sleep(1);
 					}
 
