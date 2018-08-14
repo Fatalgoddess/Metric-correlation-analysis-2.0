@@ -1,6 +1,6 @@
 package utils;
 
-public class LevensteinDistanceImplementation {
+public class LevensteinDistanceCalculator {
 
 	public static boolean fuzzyContains(String container, String containee, double threshold) {
 		int lengthcontainer = container.length();
