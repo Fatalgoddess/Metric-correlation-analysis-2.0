@@ -230,9 +230,7 @@ public class ProjectSelector {
 	 * Gets the average number of discovered vulnerabilities for the repositories in
 	 * the Elasticsearch repository database.
 	 */
-	@Test
-	// public double getAverageNumberOfDiscoveredVulnerabilities(){
-	public void getAverageNumberOfDiscoveredVulnerabilities() {
+	 public double getAverageNumberOfDiscoveredVulnerabilities(){
 		elasticClient = new RestHighLevelClient(RestClient.builder(new HttpHost("localhost", 9200, "http")));
 		VulnerabilityDataQueryHandler vulnerabilityDataQueryHandler = new VulnerabilityDataQueryHandler();
 		long totalNumberOfProjects = 0;
@@ -272,6 +270,50 @@ public class ProjectSelector {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		
+		return averageVulnerabilitiesPerProject;
 	}
+	
+	@Test
+	public void getNumberOfProjectsWithAtLeastOneVulnerabilityEntry(){
+		elasticClient = new RestHighLevelClient(RestClient.builder(new HttpHost("localhost", 9200, "http")));
+		VulnerabilityDataQueryHandler vulnerabilityDataQueryHandler = new VulnerabilityDataQueryHandler();
+		float repositoriesWithVulnerabilities = 0;
+		float percentageOfRepositoriesWithVulnerabilities = 0;
+		float totalNumberOfProjects = 0;
 
+		SearchRequest searchRequest = new SearchRequest(repositoryDatabaseName);
+		SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+		searchSourceBuilder.size(1000);
+		searchSourceBuilder.query(QueryBuilders.matchAllQuery());
+		searchRequest.source(searchSourceBuilder);
+
+		try {
+			SearchResponse searchResponse = elasticClient.search(searchRequest);
+			totalNumberOfProjects = searchResponse.getHits().getTotalHits();
+
+			SearchHits repositoryHits = searchResponse.getHits();
+			SearchHit[] searchHits = repositoryHits.getHits();
+
+			for (SearchHit searchHit : searchHits) {
+				Map<String, Object> map = searchHit.getSourceAsMap();
+				String product = map.get("Product").toString();
+				String vendor = map.get("Vendor").toString();
+				HashSet<SearchHit> vulnerabilities = vulnerabilityDataQueryHandler.getVulnerabilities(product, vendor,
+						"", "TWO");
+				if(!vulnerabilities.isEmpty())
+					repositoriesWithVulnerabilities++;
+			}
+
+			percentageOfRepositoriesWithVulnerabilities = (repositoriesWithVulnerabilities / totalNumberOfProjects) * 100;
+
+			System.out.println(
+					"The percentage of repositories with a vulnerability is : " + percentageOfRepositoriesWithVulnerabilities + "%");
+			System.out.println("Repositories with at least one vulnerability : " + repositoriesWithVulnerabilities);
+
+			elasticClient.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }
