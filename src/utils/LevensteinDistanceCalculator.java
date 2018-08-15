@@ -1,5 +1,10 @@
 package utils;
 
+/**
+ * @author Antoniya Ivanova Calculates the Levenstein distance.
+ *
+ */
+
 public class LevensteinDistanceCalculator {
 
 	public static boolean fuzzyContains(String container, String containee, double threshold) {
