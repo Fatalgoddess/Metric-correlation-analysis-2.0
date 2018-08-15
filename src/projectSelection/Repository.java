@@ -1,11 +1,22 @@
 package projectSelection;
 
+/**
+ * @author Antoniya Ivanova Represents a GitHub repository.
+ *
+ */
+
 public class Repository {
 
 	private String vendor;
 	private String product;
 	private int stars;
 
+	/**
+	 * Build a new GitHub repository representation with
+	 * @param vendor - the Vendor
+	 * @param product - the Repository/Product name
+	 * @param stars - the number of stars it has
+	 */
 	public Repository(String vendor, String product, int stars) {
 		this.vendor = vendor;
 		this.product = product;
@@ -27,7 +38,6 @@ public class Repository {
 	@Override
 	public int hashCode() {
 		return vendor.hashCode() ^ product.hashCode() ^ ((int) stars);
-		// return Objects.hash(vendor, product, stars);
 	}
 
 	@Override

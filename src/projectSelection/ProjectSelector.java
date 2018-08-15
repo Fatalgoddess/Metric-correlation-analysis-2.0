@@ -35,16 +35,27 @@ import com.google.gson.JsonParser;
 
 import vulnerabilitySearch.VulnerabilityDataQueryHandler;
 
+/**
+ * @author Antoniya Ivanova Searches via the GitHub API for usable projects for
+ *         the metric correlation analysis tool.
+ *
+ */
+
 public class ProjectSelector {
 
 	private RestHighLevelClient elasticClient;
 	private String OAuthToken = "183c10a9725ad6c00195df59c201040e1b3d1d07";
 	protected static String repositoryDatabaseName = "repositories_database_no_minimum_stars";
 
-	// @Test
 	public void projectSelector() {
-//		searchForJavaRepositoryNames();
 	}
+
+	/**
+	 * Searches for Java + Gradle repositories on GitHub.
+	 * 
+	 * @return a HashSet of {@link Repository} results, which are Java and Gradle
+	 *         projects.
+	 */
 
 	private HashSet<Repository> searchForJavaRepositoryNames() {
 		HashSet<Repository> respositoryResults = new HashSet<Repository>();
@@ -53,7 +64,7 @@ public class ProjectSelector {
 		try {
 			CloseableHttpClient httpClient = HttpClientBuilder.create().build();
 
-			// (requests x 100)
+			// Requests per page x 100
 			for (int i = 1; i <= 100; i++) {
 				url = "https://api.github.com/search/repositories?q=language:java&sort=stars&order=desc"
 						+ "&access_token=" + OAuthToken + "&page=" + i + "&per_page=89";
@@ -93,10 +104,13 @@ public class ProjectSelector {
 					}
 
 				}
+
 				addDocumentsToElastic(respositoryResults);
 				respositoryResults.clear();
 			}
+
 			httpClient.close();
+
 		} catch (Exception e) {
 			System.out.println(e.getStackTrace());
 		}
@@ -104,6 +118,14 @@ public class ProjectSelector {
 		return respositoryResults;
 	}
 
+	/**
+	 * Tests if a repository is a Gradle repository. Checks for file "build.gradle"
+	 * in its contents.
+	 * 
+	 * @param repositoryName
+	 *            the name of the repository to be tested
+	 * @return true if it is a Gradle repository, false otherwise.
+	 */
 	private boolean isGradleRepository(String repositoryName) {
 		boolean result = false;
 		String gradleKeyword = "build.gradle";
@@ -132,15 +154,23 @@ public class ProjectSelector {
 			httpClient.close();
 
 		} catch (Exception e) {
+			System.err.println("Could not check if repository is a Gradle repository.");
 			System.out.println(e.getStackTrace());
 		}
 
 		return result;
 	}
 
+	/**
+	 * Adds the found repositories to an Elasticsearch DB.
+	 * 
+	 * @param repositoriesSet
+	 *            repositories to be added to the Elasticsearch database (index).
+	 */
 	private void addDocumentsToElastic(HashSet<Repository> repositoriesSet) {
 		ArrayList<HashMap<String, Object>> repositories = new ArrayList<HashMap<String, Object>>();
 
+		// Build the repository document
 		for (Repository repositoryResult : repositoriesSet) {
 			HashMap<String, Object> repository = new HashMap<String, Object>();
 			repository.put("Vendor", repositoryResult.getVendor());
@@ -167,8 +197,9 @@ public class ProjectSelector {
 		System.out.println("Inserting " + repositories.size() + " documents into index.");
 	}
 
-	//@Test
-	// private double getAverageNumberOfStars(){
+	/**
+	 * Gets the average number of stars in the Elasticsearch repository database.
+	 */
 	public void getAverageNumberOfStars() {
 		elasticClient = new RestHighLevelClient(RestClient.builder(new HttpHost("localhost", 9200, "http")));
 
@@ -182,27 +213,32 @@ public class ProjectSelector {
 		try {
 			SearchResponse searchResponse = elasticClient.search(searchRequest);
 			Aggregations aggregations = searchResponse.getAggregations();
-			
+
 			Avg avgStars = aggregations.get("avg_stars");
-	
+
 			double avg = avgStars.getValue();
 
 			System.out.println(avg);
 			elasticClient.close();
 		} catch (Exception e) {
-			// TODO: handle exception
+			System.err.println("Could not get average number of stars.");
+			e.printStackTrace();
 		}
 	}
-	
+
+	/**
+	 * Gets the average number of discovered vulnerabilities for the repositories in
+	 * the Elasticsearch repository database.
+	 */
 	@Test
-	//private double getAverageNumberOfDiscoveredVulnerabilities(){
+	// public double getAverageNumberOfDiscoveredVulnerabilities(){
 	public void getAverageNumberOfDiscoveredVulnerabilities() {
 		elasticClient = new RestHighLevelClient(RestClient.builder(new HttpHost("localhost", 9200, "http")));
 		VulnerabilityDataQueryHandler vulnerabilityDataQueryHandler = new VulnerabilityDataQueryHandler();
 		long totalNumberOfProjects = 0;
 		long totalNumberOfVulnerabilites = 0;
 		double averageVulnerabilitiesPerProject = 0;
-		
+
 		SearchRequest searchRequest = new SearchRequest(repositoryDatabaseName);
 		SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 		searchSourceBuilder.size(1000);
@@ -212,27 +248,30 @@ public class ProjectSelector {
 		try {
 			SearchResponse searchResponse = elasticClient.search(searchRequest);
 			totalNumberOfProjects = searchResponse.getHits().getTotalHits();
-			
+
 			SearchHits repositoryHits = searchResponse.getHits();
 			SearchHit[] searchHits = repositoryHits.getHits();
-			
+
 			for (SearchHit searchHit : searchHits) {
 				Map<String, Object> map = searchHit.getSourceAsMap();
 				String product = map.get("Product").toString();
 				String vendor = map.get("Vendor").toString();
-				HashSet<SearchHit> vulnerabilities = vulnerabilityDataQueryHandler.getVulnerabilities(product, vendor, "", "TWO");
-				totalNumberOfVulnerabilites += vulnerabilityDataQueryHandler.getNumberOfVulnerabilities(vulnerabilities);
+				HashSet<SearchHit> vulnerabilities = vulnerabilityDataQueryHandler.getVulnerabilities(product, vendor,
+						"", "TWO");
+				totalNumberOfVulnerabilites += vulnerabilityDataQueryHandler
+						.getNumberOfVulnerabilities(vulnerabilities);
 			}
-			
-			averageVulnerabilitiesPerProject = totalNumberOfVulnerabilites / totalNumberOfProjects;			
-			System.out.println(averageVulnerabilitiesPerProject);
-			System.out.println(totalNumberOfVulnerabilites);
+
+			averageVulnerabilitiesPerProject = totalNumberOfVulnerabilites / totalNumberOfProjects;
+
+			System.out.println(
+					"The average number of discovered vulnerabilities is : " + averageVulnerabilitiesPerProject);
+			System.out.println("The total number of discovered vulnerabilities is : " + totalNumberOfVulnerabilites);
+
 			elasticClient.close();
-		}catch (Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
-	
-	
+
 }
