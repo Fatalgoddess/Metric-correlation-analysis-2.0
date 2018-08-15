@@ -41,62 +41,13 @@ public class ProjectSelector {
 	private String OAuthToken = "183c10a9725ad6c00195df59c201040e1b3d1d07";
 	protected static String repositoryDatabaseName = "repositories_database_no_minimum_stars";
 
-	class RepositoryResult {
-
-		private String vendor;
-		private String product;
-		private int stars;
-
-		public RepositoryResult(String vendor, String product, int stars) {
-			this.vendor = vendor;
-			this.product = product;
-			this.stars = stars;
-		}
-
-		public String getVendor() {
-			return vendor;
-		}
-
-		public String getProduct() {
-			return product;
-		}
-
-		public int getStars() {
-			return stars;
-		}
-
-		@Override
-		public int hashCode() {
-			return vendor.hashCode() ^ product.hashCode() ^ ((int) stars);
-			// return Objects.hash(vendor, product, stars);
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (obj == null)
-				return false;
-			if (!(obj instanceof RepositoryResult))
-				return false;
-			if (obj == this)
-				return true;
-			return this.getVendor().equals(((RepositoryResult) obj).getVendor())
-					&& this.getProduct().equals(((RepositoryResult) obj).getProduct())
-					&& this.getStars() == ((RepositoryResult) obj).getStars();
-		}
-
-		@Override
-		public String toString() {
-			return this.vendor + " " + this.product + " " + this.stars;
-		}
-	}
-
 	// @Test
 	public void projectSelector() {
-		searchForJavaRepositoryNames();
+//		searchForJavaRepositoryNames();
 	}
 
-	private HashSet<RepositoryResult> searchForJavaRepositoryNames() {
-		HashSet<RepositoryResult> respositoryResults = new HashSet<RepositoryResult>();
+	private HashSet<Repository> searchForJavaRepositoryNames() {
+		HashSet<Repository> respositoryResults = new HashSet<Repository>();
 		String url;
 
 		try {
@@ -132,7 +83,7 @@ public class ProjectSelector {
 						JsonObject owner = (JsonObject) jo.get("owner");
 						String vendor = owner.get("login").toString().replace("\"", "");
 
-						respositoryResults.add(new RepositoryResult(vendor, product, stars));
+						respositoryResults.add(new Repository(vendor, product, stars));
 					}
 
 					System.out.println(j);
@@ -187,10 +138,10 @@ public class ProjectSelector {
 		return result;
 	}
 
-	private void addDocumentsToElastic(HashSet<RepositoryResult> repositoriesSet) {
+	private void addDocumentsToElastic(HashSet<Repository> repositoriesSet) {
 		ArrayList<HashMap<String, Object>> repositories = new ArrayList<HashMap<String, Object>>();
 
-		for (RepositoryResult repositoryResult : repositoriesSet) {
+		for (Repository repositoryResult : repositoriesSet) {
 			HashMap<String, Object> repository = new HashMap<String, Object>();
 			repository.put("Vendor", repositoryResult.getVendor());
 			repository.put("Product", repositoryResult.getProduct());
