@@ -45,9 +45,11 @@ public class ProjectSelector {
 
 	private RestHighLevelClient elasticClient;
 	private String OAuthToken = "183c10a9725ad6c00195df59c201040e1b3d1d07";
-	protected static String repositoryDatabaseName = "repositories_database_no_minimum_stars";
+	protected static String repositoryDatabaseName = "repositories_database_extended";
 
+	@Test
 	public void projectSelector() {
+		searchForJavaRepositoryNames();
 	}
 
 	/**
@@ -56,7 +58,6 @@ public class ProjectSelector {
 	 * @return a HashSet of {@link Repository} results, which are Java and Gradle
 	 *         projects.
 	 */
-
 	private HashSet<Repository> searchForJavaRepositoryNames() {
 		HashSet<Repository> respositoryResults = new HashSet<Repository>();
 		String url;
@@ -230,7 +231,7 @@ public class ProjectSelector {
 	 * Gets the average number of discovered vulnerabilities for the repositories in
 	 * the Elasticsearch repository database.
 	 */
-	 public double getAverageNumberOfDiscoveredVulnerabilities(){
+	public double getAverageNumberOfDiscoveredVulnerabilities() {
 		elasticClient = new RestHighLevelClient(RestClient.builder(new HttpHost("localhost", 9200, "http")));
 		VulnerabilityDataQueryHandler vulnerabilityDataQueryHandler = new VulnerabilityDataQueryHandler();
 		long totalNumberOfProjects = 0;
@@ -270,12 +271,15 @@ public class ProjectSelector {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
+
 		return averageVulnerabilitiesPerProject;
 	}
-	
-	@Test
-	public void getNumberOfProjectsWithAtLeastOneVulnerabilityEntry(){
+
+	/**
+	 * Gets the number of projects with at least one vulnerability in the local Elasticsearch database.
+	 * @return repositoriesWithVulnerabilities
+	 */
+	public float getNumberOfProjectsWithAtLeastOneVulnerabilityEntry(){
 		elasticClient = new RestHighLevelClient(RestClient.builder(new HttpHost("localhost", 9200, "http")));
 		VulnerabilityDataQueryHandler vulnerabilityDataQueryHandler = new VulnerabilityDataQueryHandler();
 		float repositoriesWithVulnerabilities = 0;
@@ -301,19 +305,22 @@ public class ProjectSelector {
 				String vendor = map.get("Vendor").toString();
 				HashSet<SearchHit> vulnerabilities = vulnerabilityDataQueryHandler.getVulnerabilities(product, vendor,
 						"", "TWO");
-				if(!vulnerabilities.isEmpty())
+				if (!vulnerabilities.isEmpty())
 					repositoriesWithVulnerabilities++;
 			}
 
-			percentageOfRepositoriesWithVulnerabilities = (repositoriesWithVulnerabilities / totalNumberOfProjects) * 100;
+			percentageOfRepositoriesWithVulnerabilities = (repositoriesWithVulnerabilities / totalNumberOfProjects)
+					* 100;
 
-			System.out.println(
-					"The percentage of repositories with a vulnerability is : " + percentageOfRepositoriesWithVulnerabilities + "%");
+			System.out.println("The percentage of repositories with a vulnerability is : "
+					+ percentageOfRepositoriesWithVulnerabilities + "%");
 			System.out.println("Repositories with at least one vulnerability : " + repositoriesWithVulnerabilities);
 
 			elasticClient.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		
+		return repositoriesWithVulnerabilities;
 	}
 }
