@@ -1,5 +1,7 @@
 package utils;
 
+import org.junit.Test;
+
 /**
  * @author Antoniya Ivanova Calculates the Levenstein distance.
  *
@@ -10,6 +12,7 @@ public class LevensteinDistanceCalculator {
 	public static boolean fuzzyContains(String container, String containee, double threshold) {
 		int lengthcontainer = container.length();
 		int lengthcontainee = containee.length();
+		
 		// compare all substrings with a longer threshold.
 		if (lengthcontainer < lengthcontainee)
 			return false;
@@ -20,7 +23,6 @@ public class LevensteinDistanceCalculator {
 
 		int shift = lengthcontainer - maxlength;
 		for (int i = 0; i < shift; i++) {
-			// System.out.println("i "+i+" "+maxlength);
 			if (fuzzyContainsEnd2End(container.substring(i, i + maxlength - 1), containee, threshold))
 				return true;
 		}
@@ -37,16 +39,14 @@ public class LevensteinDistanceCalculator {
 	public static boolean fuzzyContainsEnd2End(String container, String containee, double threshold) {
 		int lengthcontainer = container.length();
 		int lengthcontainee = containee.length();
+		
 		// A smaller String cannot contain a bigger String
 		if (lengthcontainer < lengthcontainee)
 			return false;
 		//
 		double lendiff = lengthcontainer - lengthcontainee;
-		// System.out.println("difference "+lendiff);
 		double dist = computeLevenshteinDistance(container, containee);
-		// System.out.println("distance "+dist);
-		// System.out.println("containee distance "+(dist-lendiff));
-		// System.out.println("containee ratio "+((dist-lendiff)/lengthcontainee));
+		
 		if (((dist - lendiff) / lengthcontainee) < threshold)
 			return true;
 
@@ -71,5 +71,10 @@ public class LevensteinDistanceCalculator {
 			// System.out.println();
 		}
 		return distance[lhs.length()][rhs.length()];
+	}
+	
+	@Test
+	public void test() {
+		System.out.println(fuzzyContains("brilliancectbigborefirmware", "frogcms", 0.15));
 	}
 }
