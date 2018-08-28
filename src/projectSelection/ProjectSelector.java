@@ -1,5 +1,6 @@
 package projectSelection;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -189,13 +190,19 @@ public class ProjectSelector {
 
 			try {
 				elasticClient.index(indexRequest);
-				elasticClient.close();
 			} catch (Exception e) {
 				System.err.println("Could not index document " + iterator.toString());
 				e.printStackTrace();
 			}
 		}
+		
 		System.out.println("Inserting " + repositories.size() + " documents into index.");
+		
+		try {
+			elasticClient.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -220,11 +227,17 @@ public class ProjectSelector {
 			double avg = avgStars.getValue();
 
 			System.out.println(avg);
-			elasticClient.close();
 		} catch (Exception e) {
 			System.err.println("Could not get average number of stars.");
 			e.printStackTrace();
 		}
+		
+	    try { 
+	        elasticClient.close(); 
+	      } catch (Exception e) { 
+	        System.err.println("Could not close RestHighLevelClient!"); 
+	        e.printStackTrace(); 
+	      } 
 	}
 
 	/**
