@@ -50,7 +50,10 @@ public class ProjectSelector {
 
 	@Test
 	public void projectSelector() {
-		getNumberOfProjectsWithAtLeastOneVulnerabilityEntry();
+		ArrayList<String> projects = getProjectsWithAtLeastOneVulnerabilityEntry();
+		for (String projectURL : projects) {
+			System.out.println(projectURL);
+		}
 //		searchForJavaRepositoryNames();
 	}
 
@@ -290,13 +293,16 @@ public class ProjectSelector {
 	}
 
 	/**
-	 * Gets the number of projects with at least one vulnerability in the local Elasticsearch database.
+	 * Gets the projects with at least one vulnerability in the local Elasticsearch database.
 	 * @return repositoriesWithVulnerabilities
 	 */
-	public float getNumberOfProjectsWithAtLeastOneVulnerabilityEntry(){
+	public ArrayList<String> getProjectsWithAtLeastOneVulnerabilityEntry(){
 		elasticClient = new RestHighLevelClient(RestClient.builder(new HttpHost("localhost", 9200, "http")));
 		VulnerabilityDataQueryHandler vulnerabilityDataQueryHandler = new VulnerabilityDataQueryHandler();
-		float repositoriesWithVulnerabilities = 0;
+		
+		ArrayList<String> projectsWithVulnerabilities = new ArrayList<String>();
+		String projectURL = "";
+		float numberOfRepositoriesWithVulnerabilities = 0;
 		float percentageOfRepositoriesWithVulnerabilities = 0;
 		float totalNumberOfProjects = 0;
 
@@ -319,22 +325,25 @@ public class ProjectSelector {
 				String vendor = map.get("Vendor").toString();
 				HashSet<SearchHit> vulnerabilities = vulnerabilityDataQueryHandler.getVulnerabilities(product, vendor,
 						"", "TWO");
-				if (!vulnerabilities.isEmpty())
-					repositoriesWithVulnerabilities++;
+				if (!vulnerabilities.isEmpty()) {
+					numberOfRepositoriesWithVulnerabilities++;
+					projectURL = "www.github.com/" + vendor + "/" + product;
+					projectsWithVulnerabilities.add(projectURL);
+				}
 			}
 
-			percentageOfRepositoriesWithVulnerabilities = (repositoriesWithVulnerabilities / totalNumberOfProjects)
+			percentageOfRepositoriesWithVulnerabilities = (numberOfRepositoriesWithVulnerabilities / totalNumberOfProjects)
 					* 100;
 
 			System.out.println("The percentage of repositories with a vulnerability is : "
 					+ percentageOfRepositoriesWithVulnerabilities + "%");
-			System.out.println("Repositories with at least one vulnerability : " + repositoriesWithVulnerabilities);
+			System.out.println("Repositories with at least one vulnerability : " + numberOfRepositoriesWithVulnerabilities);
 
 			elasticClient.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		
-		return repositoriesWithVulnerabilities;
+		return projectsWithVulnerabilities;
 	}
 }
