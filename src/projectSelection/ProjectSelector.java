@@ -50,7 +50,8 @@ public class ProjectSelector {
 
 	@Test
 	public void projectSelector() {
-		searchForJavaRepositoryNames();
+		getNumberOfProjectsWithAtLeastOneVulnerabilityEntry();
+//		searchForJavaRepositoryNames();
 	}
 
 	/**
