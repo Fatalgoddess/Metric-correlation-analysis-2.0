@@ -34,6 +34,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import utils.ProjectVersionCVSS2CVSS3NumberOfBugs;
 import vulnerabilitySearch.VulnerabilityDataQueryHandler;
 
 /**
@@ -45,17 +46,9 @@ import vulnerabilitySearch.VulnerabilityDataQueryHandler;
 public class ProjectSelector {
 
 	private RestHighLevelClient elasticClient;
-	private String OAuthToken = "183c10a9725ad6c00195df59c201040e1b3d1d07";
+	// Change this to your own OAuthToken
+	protected static String OAuthToken = "183c10a9725ad6c00195df59c201040e1b3d1d07";
 	protected static String repositoryDatabaseName = "repositories_database_extended";
-
-	@Test
-	public void projectSelector() {
-		ArrayList<String> projects = getProjectsWithAtLeastOneVulnerabilityEntry();
-		for (String projectURL : projects) {
-			System.out.println(projectURL);
-		}
-//		searchForJavaRepositoryNames();
-	}
 
 	/**
 	 * Searches for Java + Gradle repositories on GitHub.
@@ -199,14 +192,77 @@ public class ProjectSelector {
 				e.printStackTrace();
 			}
 		}
-		
+
 		System.out.println("Inserting " + repositories.size() + " documents into index.");
-		
+
 		try {
 			elasticClient.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	/**
+	 * Gets the projects with at least one vulnerability in the local Elasticsearch
+	 * database.
+	 * 
+	 * @return repositoriesWithVulnerabilities as HashSet of SearchHits
+	 */
+	public HashSet<SearchHit> getProjectsWithAtLeastOneVulnerability() {
+		HashSet<SearchHit> results = new HashSet<SearchHit>();
+
+		float numberOfRepositoriesWithVulnerabilities = 0;
+		float percentageOfRepositoriesWithVulnerabilities = 0;
+		float totalNumberOfProjects = 0;
+
+		elasticClient = new RestHighLevelClient(RestClient.builder(new HttpHost("localhost", 9200, "http")));
+		VulnerabilityDataQueryHandler vulnerabilityDataQueryHandler = new VulnerabilityDataQueryHandler();
+
+		SearchRequest searchRequest = new SearchRequest(repositoryDatabaseName);
+
+		SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+		searchSourceBuilder.size(1000);
+		searchSourceBuilder.query(QueryBuilders.matchAllQuery());
+
+		searchRequest.source(searchSourceBuilder);
+
+		try {
+			SearchResponse searchResponse = elasticClient.search(searchRequest);
+			totalNumberOfProjects = searchResponse.getHits().getTotalHits();
+
+			SearchHits repositoryHits = searchResponse.getHits();
+			SearchHit[] repositorySearchHits = repositoryHits.getHits();
+
+			for (SearchHit repository : repositorySearchHits) {
+
+				Map<String, Object> map = repository.getSourceAsMap();
+
+				String product = map.get("Product").toString();
+				String vendor = map.get("Vendor").toString();
+
+				HashSet<SearchHit> vulnerabilities = vulnerabilityDataQueryHandler.getVulnerabilities(product, vendor,
+						"", "TWO");
+
+				if (!vulnerabilities.isEmpty()) {
+					numberOfRepositoriesWithVulnerabilities++;
+					results.add(repository);
+				}
+			}
+
+			percentageOfRepositoriesWithVulnerabilities = (numberOfRepositoriesWithVulnerabilities
+					/ totalNumberOfProjects) * 100;
+
+			System.out.println("The percentage of repositories with a vulnerability is : "
+					+ percentageOfRepositoriesWithVulnerabilities + "%");
+			System.out.println(
+					"Repositories with at least one vulnerability : " + numberOfRepositoriesWithVulnerabilities);
+
+			elasticClient.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return results;
 	}
 
 	/**
@@ -235,13 +291,13 @@ public class ProjectSelector {
 			System.err.println("Could not get average number of stars.");
 			e.printStackTrace();
 		}
-		
-	    try { 
-	        elasticClient.close(); 
-	      } catch (Exception e) { 
-	        System.err.println("Could not close RestHighLevelClient!"); 
-	        e.printStackTrace(); 
-	      } 
+
+		try {
+			elasticClient.close();
+		} catch (Exception e) {
+			System.err.println("Could not close RestHighLevelClient!");
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -274,8 +330,7 @@ public class ProjectSelector {
 				String vendor = map.get("Vendor").toString();
 				HashSet<SearchHit> vulnerabilities = vulnerabilityDataQueryHandler.getVulnerabilities(product, vendor,
 						"", "TWO");
-				totalNumberOfVulnerabilites += vulnerabilityDataQueryHandler
-						.getNumberOfVulnerabilities(vulnerabilities);
+				totalNumberOfVulnerabilites += vulnerabilities.size();
 			}
 
 			averageVulnerabilitiesPerProject = totalNumberOfVulnerabilites / totalNumberOfProjects;
@@ -292,58 +347,4 @@ public class ProjectSelector {
 		return averageVulnerabilitiesPerProject;
 	}
 
-	/**
-	 * Gets the projects with at least one vulnerability in the local Elasticsearch database.
-	 * @return repositoriesWithVulnerabilities
-	 */
-	public ArrayList<String> getProjectsWithAtLeastOneVulnerabilityEntry(){
-		elasticClient = new RestHighLevelClient(RestClient.builder(new HttpHost("localhost", 9200, "http")));
-		VulnerabilityDataQueryHandler vulnerabilityDataQueryHandler = new VulnerabilityDataQueryHandler();
-		
-		ArrayList<String> projectsWithVulnerabilities = new ArrayList<String>();
-		String projectURL = "";
-		float numberOfRepositoriesWithVulnerabilities = 0;
-		float percentageOfRepositoriesWithVulnerabilities = 0;
-		float totalNumberOfProjects = 0;
-
-		SearchRequest searchRequest = new SearchRequest(repositoryDatabaseName);
-		SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-		searchSourceBuilder.size(1000);
-		searchSourceBuilder.query(QueryBuilders.matchAllQuery());
-		searchRequest.source(searchSourceBuilder);
-
-		try {
-			SearchResponse searchResponse = elasticClient.search(searchRequest);
-			totalNumberOfProjects = searchResponse.getHits().getTotalHits();
-
-			SearchHits repositoryHits = searchResponse.getHits();
-			SearchHit[] searchHits = repositoryHits.getHits();
-
-			for (SearchHit searchHit : searchHits) {
-				Map<String, Object> map = searchHit.getSourceAsMap();
-				String product = map.get("Product").toString();
-				String vendor = map.get("Vendor").toString();
-				HashSet<SearchHit> vulnerabilities = vulnerabilityDataQueryHandler.getVulnerabilities(product, vendor,
-						"", "TWO");
-				if (!vulnerabilities.isEmpty()) {
-					numberOfRepositoriesWithVulnerabilities++;
-					projectURL = "www.github.com/" + vendor + "/" + product;
-					projectsWithVulnerabilities.add(projectURL);
-				}
-			}
-
-			percentageOfRepositoriesWithVulnerabilities = (numberOfRepositoriesWithVulnerabilities / totalNumberOfProjects)
-					* 100;
-
-			System.out.println("The percentage of repositories with a vulnerability is : "
-					+ percentageOfRepositoriesWithVulnerabilities + "%");
-			System.out.println("Repositories with at least one vulnerability : " + numberOfRepositoriesWithVulnerabilities);
-
-			elasticClient.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		return projectsWithVulnerabilities;
-	}
 }
